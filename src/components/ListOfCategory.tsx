@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {
   View,
   Text,
@@ -27,6 +27,7 @@ const ListOfCategory = () => {
       intervalId?: NodeJS.Timeout;
     }[]
   >([]);
+  const intervalRefs = useRef<{[key: string]: NodeJS.Timeout}>({});
 
   useEffect(() => {
     const getData = async () => {
@@ -37,17 +38,22 @@ const ListOfCategory = () => {
         }
         const storedTimers = await AsyncStorage.getItem('Timers');
         if (storedTimers) {
-          setTimers(
-            JSON.parse(storedTimers).map((timer: any) => ({
-              ...timer,
-            })),
-          );
+          setTimers(JSON.parse(storedTimers));
+          JSON.parse(storedTimers).forEach((timer: any) => {
+            if (timer.status === 'In Progress') {
+              handleStart(timer, false);
+            }
+          });
         }
       } catch (error) {
         console.error('Error fetching data:', error);
       }
     };
     getData();
+    return () => {
+      Object.values(intervalRefs.current).forEach(clearInterval);
+      intervalRefs.current = {};
+    };
   }, []);
 
   const toggleCategory = (category: string) => {
@@ -57,10 +63,10 @@ const ListOfCategory = () => {
     }));
   };
 
-  const handleStart = (timer: any) => {
-    if (timer.intervalId) return;
+  const handleStart = (timer: any, shouldSave = true) => {
+    if (intervalRefs.current[timer.name]) return;
 
-    const intervalId = setInterval(async () => {
+    intervalRefs.current[timer.name] = setInterval(async () => {
       let newTimers: any;
       setTimers(prevTimers => {
         newTimers = prevTimers.map(t => {
@@ -68,21 +74,18 @@ const ListOfCategory = () => {
             const newTime = t.remainingDuration - 1;
 
             if (newTime <= 0) {
-              clearInterval(intervalId);
+              clearInterval(intervalRefs.current[timer.name]);
+              delete intervalRefs.current[timer.name];
               const updatedTimer = {
                 ...t,
                 remainingDuration: 0,
                 status: 'Completed',
-                intervalId: undefined,
               };
 
               Alert.alert(
                 'Congratulation',
                 `${t.name} of ${t.category} is completed`,
               );
-
-              // Save updated status to AsyncStorage
-              AsyncStorage.setItem('Timers', JSON.stringify(newTimers));
 
               return updatedTimer;
             }
@@ -95,36 +98,33 @@ const ListOfCategory = () => {
         return newTimers;
       });
 
-      try {
-        await AsyncStorage.setItem('Timers', JSON.stringify(newTimers));
-      } catch (error) {
-        console.error('Error updating timer status:', error);
+      if (shouldSave) {
+        try {
+          await AsyncStorage.setItem('Timers', JSON.stringify(newTimers));
+        } catch (error) {
+          console.error('Error updating timer status:', error);
+        }
       }
     }, 1000);
 
     setTimers(prevTimers =>
       prevTimers.map(t =>
-        t.name === timer.name ? {...t, status: 'In Progress', intervalId} : t,
+        t.name === timer.name ? {...t, status: 'In Progress'} : t,
       ),
     );
   };
 
   const handlePause = async (timer: any) => {
-    if (timer.intervalId) {
-      clearInterval(timer.intervalId);
+    if (intervalRefs.current[timer.name]) {
+      clearInterval(intervalRefs.current[timer.name]);
+      delete intervalRefs.current[timer.name];
     }
 
     let updatedTimers;
 
     setTimers(prevTimers => {
       updatedTimers = prevTimers.map(t =>
-        t.name === timer.name
-          ? {
-              ...t,
-              status: 'Paused',
-              intervalId: undefined,
-            }
-          : t,
+        t.name === timer.name ? {...t, status: 'Paused'} : t,
       );
       return updatedTimers;
     });
@@ -137,8 +137,9 @@ const ListOfCategory = () => {
   };
 
   const handleReset = async (timer: any) => {
-    if (timer.intervalId) {
-      clearInterval(timer.intervalId);
+    if (intervalRefs.current[timer.name]) {
+      clearInterval(intervalRefs.current[timer.name]);
+      delete intervalRefs.current[timer.name];
     }
 
     let updatedTimers;
@@ -150,7 +151,6 @@ const ListOfCategory = () => {
               ...t,
               remainingDuration: t.totalduration,
               status: 'N/A',
-              intervalId: undefined,
             }
           : t,
       );
@@ -207,19 +207,23 @@ const ListOfCategory = () => {
     setTimers(prevTimers =>
       prevTimers.map(timer => {
         if (timer.category === category) {
-          if (action === 'start' && !timer.intervalId) {
-            const intervalId = setInterval(() => {
+          if (action === 'start' && !intervalRefs.current[timer.name]) {
+            intervalRefs.current[timer.name] = setInterval(() => {
               setTimers(prevTimers =>
                 prevTimers.map(t => {
                   if (t.name === timer.name) {
                     const newTime = t.remainingDuration - 1;
                     if (newTime <= 0) {
-                      clearInterval(intervalId);
+                      clearInterval(intervalRefs.current[timer.name]);
+                      delete intervalRefs.current[timer.name];
+                      Alert.alert(
+                        'Congratulation',
+                        `${t.name} of ${t.category} is completed`,
+                      );
                       return {
                         ...t,
                         remainingDuration: 0,
                         status: 'Completed',
-                        intervalId: undefined,
                       };
                     }
                     return {...t, remainingDuration: newTime};
@@ -228,21 +232,24 @@ const ListOfCategory = () => {
                 }),
               );
             }, 1000);
-            return {...timer, status: 'In Progress', intervalId};
+            return {...timer, status: 'In Progress'};
           }
 
-          if (action === 'pause' && timer.intervalId) {
-            clearInterval(timer.intervalId);
-            return {...timer, status: 'Paused', intervalId: undefined};
+          if (action === 'pause' && intervalRefs.current[timer.name]) {
+            clearInterval(intervalRefs.current[timer.name]);
+            delete intervalRefs.current[timer.name];
+            return {...timer, status: 'Paused'};
           }
 
           if (action === 'reset') {
-            if (timer.intervalId) clearInterval(timer.intervalId);
+            if (intervalRefs.current[timer.name]) {
+              clearInterval(intervalRefs.current[timer.name]);
+              delete intervalRefs.current[timer.name];
+            }
             return {
               ...timer,
               remainingDuration: timer.totalduration,
               status: 'N/A',
-              intervalId: undefined,
             };
           }
         }

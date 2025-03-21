@@ -9,6 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {useSelector} from 'react-redux';
 
 const AddTimer = () => {
   const [name, setName] = useState('');
@@ -19,6 +20,7 @@ const AddTimer = () => {
     {name: string; duration: number; category: string}[]
   >([]);
   const [modalVisible, setModalVisible] = useState(false);
+  const state = useSelector(state => state.reducer.isDark);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -74,7 +76,12 @@ const AddTimer = () => {
   };
 
   return (
-    <View style={{flex: 1, padding: 20}}>
+    <View
+      style={{
+        flex: 1,
+        padding: 20,
+        backgroundColor: state ? 'blue' : 'white',
+      }}>
       <Text style={{fontSize: 18, fontWeight: 'bold'}}>Add Timer</Text>
 
       <TextInput

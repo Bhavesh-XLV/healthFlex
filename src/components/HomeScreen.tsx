@@ -6,12 +6,12 @@ import {changeTheme} from '../redux/slice/themeSlice';
 
 const HomeScreen = () => {
   const navigation = useNavigation();
-  const state = useSelector(state => state.reducer.isDark);
+  const state = useSelector((state: any) => state.reducer.isDark);
   const dispatch = useDispatch();
 
   return (
     <View
-      style={[styles.container, {backgroundColor: state ? 'black' : 'blue'}]}>
+      style={[styles.container, {backgroundColor: state ? 'black' : 'white'}]}>
       <TouchableOpacity
         onPress={() => navigation.navigate('ListOfCategory')}
         style={styles.buttonContainer}>
