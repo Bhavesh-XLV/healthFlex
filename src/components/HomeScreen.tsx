@@ -6,8 +6,9 @@ import {changeTheme} from '../redux/slice/themeSlice';
 
 const HomeScreen = () => {
   const navigation = useNavigation();
-  const state = useSelector(state => state.isDark);
+  const state = useSelector(state => state.reducer.isDark);
   const dispatch = useDispatch();
+
   return (
     <View
       style={[styles.container, {backgroundColor: state ? 'black' : 'blue'}]}>
@@ -24,7 +25,9 @@ const HomeScreen = () => {
       </TouchableOpacity>
 
       <TouchableOpacity
-        onPress={() => dispatch(changeTheme())}
+        onPress={() => {
+          dispatch(changeTheme());
+        }}
         style={styles.buttonContainer}>
         <Text style={styles.buttonText}>Change Theme</Text>
       </TouchableOpacity>
