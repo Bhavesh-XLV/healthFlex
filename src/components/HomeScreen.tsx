@@ -1,11 +1,16 @@
 import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
 import React from 'react';
 import {useNavigation} from '@react-navigation/native';
+import {useDispatch, useSelector} from 'react-redux';
+import {changeTheme} from '../redux/slice/themeSlice';
 
 const HomeScreen = () => {
   const navigation = useNavigation();
+  const state = useSelector(state => state.isDark);
+  const dispatch = useDispatch();
   return (
-    <View style={styles.container}>
+    <View
+      style={[styles.container, {backgroundColor: state ? 'black' : 'blue'}]}>
       <TouchableOpacity
         onPress={() => navigation.navigate('ListOfCategory')}
         style={styles.buttonContainer}>
@@ -16,6 +21,12 @@ const HomeScreen = () => {
         onPress={() => navigation.navigate('AddTimer')}
         style={styles.buttonContainer}>
         <Text style={styles.buttonText}>Add Timer</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        onPress={() => dispatch(changeTheme())}
+        style={styles.buttonContainer}>
+        <Text style={styles.buttonText}>Change Theme</Text>
       </TouchableOpacity>
     </View>
   );
